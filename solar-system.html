@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<body style="background-color:black;">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar System</title>
+</head>
+
+<body>
+    <h1>Solar System</h1>
+
+    <p style="color:white;">
+        Speed ...... + <input type="range" id="input2" value="1000" min="50" max="2000" onchange="speedChange()"> -
+    </p>
+    <p id="speedText" style="color:white;">
+        Currently slowed down: 1000x
+    </p>
+    <p style="color:white;">
+        Show movement paths <button type="button" id="btnLines" onclick="toggleLines()">Show lines</button>
+    </p>
+    <p style="color:white;">
+        True planet size scale <input type="checkbox" id="chkScale" onclick="toggleRealScale()"></input>
+    </p>
+    
+    <div style="float: center;">
+        <canvas id="myCanvas" width="900" height="900" style="border:1px solid #d3d3d3;">
+            Your browser does not support the HTML5 canvas tag.
+        </canvas>
+    </div>
+
+    <script src="mojefunkcije_01.js"></script>
+    <script type="text/javascript">
+
+        var c = document.getElementById("myCanvas");
+        var ctx = c.getContext("2d");
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'black';
+        ctx.fillStyle = "#00000000";
+        let textColor = "white";
+
+        let width = c.width;
+        let height = c.height;
+        let Ox = width / 2;
+        let Oy = height / 2;
+
+        let scale = 230;
+        let sunSize = 40;
+        let d = 220;
+        let sunRadiusKm = 696340;
+
+        let showingInfo = false;
+        let linesShown = false;
+        let isScaled = false;
+        
+        let speedHasChanged = true;
+
+        let selectedPlanet = null;
+        let selectedPlanetIndex = null;
+
+        let planets = [
+            { r: sunSize, x: 0, y: 0, name: "Sun", speed: 0, fi: 0, color: "#ffd500", distance: 0, ring: false, fitsInSunCount: 1 },
+            { r: 12, x: 0, y: 0, name: "Mercury", speed: 0, fi: 0, color: "#b1b1b1", distance: 100, ring: false, fitsInSunCount: 285 },
+            { r: 14.7, x: 0, y: 0, name: "Venus", speed: 0, fi: 0, color: "#e6c79c", distance: 130, ring: false, fitsInSunCount: 115 },
+            { r: 16.4, x: 0, y: 0, name: "Earth", speed: 0, fi: 0, color: "green", distance: 180, ring: false, fitsInSunCount: 109 },
+            { r: 15.4, x: 0, y: 0, name: "Mars", speed: 0, fi: 0, color: "#c1440e", distance: 230, ring: false, fitsInSunCount: 205 },
+            { r: 29.6, x: 0, y: 0, name: "Jupiter", speed: 0, fi: 0, color: "#d9a066", distance: 280, ring: false, fitsInSunCount: 10 },
+            { r: 25.6, x: 0, y: 0, name: "Saturn", speed: 0, fi: 0, color: "#f5deb3", distance: 330, ring: true, fitsInSunCount: 12 },
+            { r: 21.6, x: 0, y: 0, name: "Uranus", speed: 0, fi: 0, color: "#8dd9d9", distance: 380, ring: false, fitsInSunCount: 27 },
+            { r: 19.6, x: 0, y: 0, name: "Neptune", speed: 0, fi: 0, color: "#4166f5", distance: 430, ring: false, fitsInSunCount: 28 }
+        ];
+
+        let planetsData = [
+            { name: "Sun", mass: "1.989 * 10^30 kg", size: "1,391,000 km", period: "-" },
+            { name: "Mercury", mass: "3.30 * 10^23 kg", size: "4,880 km", period: "87.9 days" },
+            { name: "Venus", mass: "4.87 * 10^24 kg", size: "12,104 km", period: "224.7 days" },
+            { name: "Earth", mass: "5.97 * 10^24 kg", size: "12,742 km", period: "365.2 days" },
+            { name: "Mars", mass: "6.42 * 10^23 kg", size: "6,779 km", period: "686.9 days" },
+            { name: "Jupiter", mass: "1.90 * 10^27 kg", size: "139,820 km", period: "11.8 years" },
+            { name: "Saturn", mass: "5.68 * 10^26 kg", size: "116,460 km", period: "29.4 years" },
+            { name: "Uranus", mass: "8.68 * 10^25 kg", size: "50,724 km", period: "84 years" },
+            { name: "Neptune", mass: "1.02 * 10^26 kg", size: "49,244 km", period: "164.7 years" }
+        ];
+
+        let moon = { r: 2.6, x: 0, y: 0, speed: 0, fi: 0, color: "white", distance: 20 };
+
+        function speedChange() {
+            speedHasChanged = true;
+            console.log("changed");
+        }
+
+        function toggleLines() {
+            let buttonLines = document.getElementById("btnLines");
+
+            if (linesShown) {
+                linesShown = false;
+                buttonLines.innerHTML = "Show lines";
+            } else {
+                buttonLines.innerHTML = "Hide lines";
+                linesShown = true;
+            }
+        }
+
+        function setRadius(planet) {
+            let sunDiameter = sunSize * 2;
+            let scaleFactor = (sunRadiusKm * 2) / sunDiameter;
+            let trueSize = (sunRadiusKm * 2) / planet.fitsInSunCount;
+            planet.r = trueSize / scaleFactor;
+        }
+
+        function toggleRealScale() {
+            if (!isScaled) {
+                for (let i = 1; i < planets.length; i++) {
+                    setRadius(planets[i]);
+                }
+
+                let sunDiameter = sunSize * 2;
+                let scaleFactor = (sunRadiusKm * 2) / sunDiameter;
+                let moonRadiusKm = 1737;
+                let trueMoonSize = moonRadiusKm * 2;
+                moon.r = trueMoonSize / scaleFactor;
+
+                isScaled = true;
+            } else {
+                planets[1].r = 12;
+                planets[2].r = 14.7;
+                planets[3].r = 16.4;
+                planets[4].r = 15.4;
+                planets[5].r = 29.6;
+                planets[6].r = 25.6;
+                planets[7].r = 21.6;
+                planets[8].r = 19.6;
+
+                moon.r = 2.6;
+
+                isScaled = false;
+            }
+        }
+
+        function getEarthPosition(planets) {
+            for (let i = 0; i < planets.length; i++) {
+                if (planets[i].name == "Earth") {
+                    console.log("Earth is at position " + i + " in the list");
+                    return i;
+                }
+            }
+            console.warn("Earth not found in list. Returning position 0");
+            return 0;
+        }
+
+        function setupSpeed(earthPosition, planets, earthSpeed) {
+            if (!speedHasChanged) return planets;
+            speedHasChanged = false;
+
+            for (let i = 0; i < planets.length; i++) {
+                if (planets[i].name != "Sun") {
+                    let distanceFromEarth = Math.abs(i - earthPosition);
+
+                    if (i < earthPosition) {
+                        planets[i].speed = earthSpeed / (distanceFromEarth + 1);
+                    } else if (i > earthPosition) {
+                        planets[i].speed = earthSpeed * (distanceFromEarth + 1);
+                    } else {
+                        planets[i].speed = earthSpeed;
+                    }
+                }
+            }
+            return planets;
+        }
+
+        function drawText(x, y, text, color, size) {
+            ctx.font = size + "px Arial";
+            ctx.fillStyle = color;
+            ctx.textAlign = "center";
+            ctx.fillText(text, x, y);
+        }
+
+        function drawOrbitPath(planet) {
+            if (planet.ring) circle(planet.x, planet.y, planet.r * 0.2);
+            if (linesShown) {
+                circleBijeli(Ox, Oy, planet.distance);
+                if (planet.name != "Sun") drawText(width / 2, Oy + 10 + planet.distance, planet.name, textColor, 10);
+            }
+        }
+
+        function drawPlanet(planet, ratio) {
+            if (planet.speed == 0 && planet.name != "Sun") return;
+            
+            if (planet.name == "Sun") {
+                circle(Ox, Oy, planet.r, planet.color);
+                for (let i = 0; i < 50; i++) {
+                    let counter = 50;
+                    circle(Ox, Oy, planet.r + i, "#ffe77a" + counter);
+                    counter++;
+                }
+            }
+            if (planet.speed == 0) return;
+
+            if (showingInfo) displayInfo(selectedPlanet);
+
+            planet.fi += Math.PI / planet.speed;
+            
+            while (planet.fi > Math.PI * 2) {
+                planet.fi -= Math.PI * 2;
+            }
+
+            planet.x = Ox + planet.distance * Math.cos(planet.fi);
+            planet.y = Oy + planet.distance * Math.sin(planet.fi);
+            circle(planet.x, planet.y, (sunSize * 0.01 * planet.r), planet.color);
+            drawOrbitPath(planet);
+
+            drawText(planet.x + planet.r + 7, planet.y - planet.r, planet.name, "white", 10);
+            drawText(Ox, Oy, "Sun", "black", 20);
+        }
+
+        function drawMoon(planet, earthSpeed) {
+            moon.fi += (Math.PI / earthSpeed) * 12;
+            
+            while (moon.fi >= Math.PI * 2) {
+                moon.fi -= Math.PI * 2;
+            }
+
+            moon.x = planet.x + moon.distance * Math.cos(moon.fi);
+            moon.y = planet.y + moon.distance * Math.sin(moon.fi);
+            circle(moon.x, moon.y, moon.r, moon.color);
+
+            if (linesShown) {
+                for (let i = 0; i < planets.length; i++) {
+                    if (planets[i].name == "Earth") circleBijeli(planets[i].x, planets[i].y, moon.distance);
+                }
+            }
+
+            ctx.font = "10px Arial";
+            ctx.fillStyle = textColor;
+            ctx.fillText("Moon", moon.x + moon.r + 4, moon.y);
+        }
+
+        function displayInfo(planet) {
+            if (planet == null) return;
+            let planetD = planetsData[selectedPlanetIndex];
+            showingInfo = true;
+            let sizex = 300;
+            let sizey = 300;
+            let infoX = width - sizex;
+            let infoY = height - sizey;
+
+            rect(infoX, infoY, sizex, sizey, "#99999930");
+            drawText(infoX + sizex / 2, infoY + sizey / 6, "Planet: " + planet.name, textColor, 20);
+            drawText(infoX + sizex / 2, infoY + sizey / 4, "Mass: " + planetD.mass, textColor, 20);
+            drawText(infoX + sizex / 2, infoY + sizey / 3, "Diameter: " + planetD.size, textColor, 20);
+            drawText(infoX + sizex / 2, infoY + sizey / 2.4, "Orbital Period: " + planetD.period, textColor, 20);
+        }
+
+        function removeInfo() {
+            showingInfo = false;
+            selectedPlanet = null;
+            selectedPlanetIndex = null;
+        }
+
+        function drawRandomStars() {
+            for (let i = 0; i < 100; i++) {
+                circle(Math.random() * width, Math.random() * height, Math.random() * 2, "white");
+            }
+        }
+
+        function getDistance({ mouseX, mouseY, circleX, circleY }) {
+            let dx = circleX - mouseX;
+            let dy = circleY - mouseY;
+
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        function handleMouseClick(event) {
+            let mouseX = event.offsetX;
+            let mouseY = event.offsetY;
+
+            for (let i = 0; i < planets.length; i++) {
+                let circleX = planets[i].x;
+                let circleY = planets[i].y;
+
+                if (getDistance({ mouseX, mouseY, circleX, circleY }) <= planets[i].r) {
+                    selectedPlanetIndex = i;
+                    selectedPlanet = planets[i];
+                    displayInfo(planets[i]);
+                    break;
+                }
+            }
+        }
+
+        function main() {
+            clearCanvas();
+
+            let speedInput = document.getElementById("input2");
+            let speedText = document.getElementById("speedText");
+
+            let earthPosition = 0;
+            let earthSpeed = 1000;
+
+            rect(0, 0, width, height, "black");
+
+            for (let i = 0; i < planets.length; i++) {
+                planets[i].r *= d / scale;
+                planets[i].distance *= d / scale;
+            }
+
+            let displayedSunRadius = planets[0].r;
+            let ratio = sunRadiusKm / displayedSunRadius;
+
+            earthPosition = getEarthPosition(planets);
+            planets = setupSpeed(earthPosition, planets, earthSpeed);
+
+            addEventListener("click", handleMouseClick);
+            addEventListener("dblclick", removeInfo);
+
+            function step(timestamp) {
+                earthSpeed = Number(speedInput.value);
+                setupSpeed(earthPosition, planets, earthSpeed);
+                speedText.innerHTML = "Currently slowed down: " + earthSpeed + "x";
+
+                clearCanvas();
+                rect(0, 0, width, height, "black");
+                drawRandomStars();
+
+                for (let i = 0; i < planets.length; i++) {
+                    drawPlanet(planets[i], ratio);
+                    if (planets[i].name == "Earth") drawMoon(planets[i], earthSpeed);
+                }
+
+                window.requestAnimationFrame(step);
+            }
+
+            window.requestAnimationFrame(step);
+        }
+
+        main();
+
+    </script>
+</body>
+</html>
